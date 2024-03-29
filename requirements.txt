@@ -1,0 +1,4 @@
+requests
+tiktoken
+supabase
+gotrue
