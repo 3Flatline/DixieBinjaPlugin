@@ -26,7 +26,8 @@ MAX_FILE_UPLOAD_SIZE = 1024 * 1024 * 10
 # DEV
 # API_URL_BASE = "https://krjndzi2kb.execute-api.us-east-1.amazonaws.com/v1/"
 # PROD
-API_URL_BASE = 'https://api2.3flatline.ai'
+# API_URL_BASE = 'https://api2.3flatline.ai'
+API_URL_BASE = 'http://54.226.128.229'
 
 
 logging.disable(sys.maxsize)
@@ -171,8 +172,14 @@ class DixieAPI:
                 # print(result.content)
                 return {}
             result_json = result.json()
-            body = result_json.get("body")
-            # print(result_json)
+            # FastAPI copy pasta error, TODO: fix actual return code.
+            if result_json.get('statusCode') != 200:
+                print(f"Error during task creation on AWS server: {result_json.get('body')}")
+                return
+            try:
+                body = result_json.get("body")
+            except TypeError:
+                print(f"Unable to create task on the server due to unexpected response format Please report this to support@3flatline.ai: {result_json}")
             new_task_id = body.get("task_id")
             signed_url = body.get("signed_url")
 

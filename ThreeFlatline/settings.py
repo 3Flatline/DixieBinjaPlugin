@@ -1,4 +1,5 @@
 from binaryninja import BinaryView
+from binaryninja.plugin import BackgroundTaskThread
 from binaryninja.settings import Settings
 import re
 import tempfile
@@ -44,7 +45,7 @@ class AnalysisSettings(QWidget):
         self.vulns_checkbox.setChecked(False)
         layout.addWidget(self.vulns_checkbox)
         run_button = QPushButton("Run Analysis")
-        run_button.clicked.connect(self.create_tasks)
+        run_button.clicked.connect(self.background_create_tasks)
         layout.addWidget(run_button)
         # self.setWindowTitle(self.title.text())
         self.username = Settings().get_string("dixie.username") 
@@ -123,6 +124,10 @@ class AnalysisSettings(QWidget):
                 f.write('')
             bv.undo()
 
+    def background_create_tasks(self):
+        """Thread task creation to avoid lock"""
+        FunctionTask(self.create_tasks).start()
+
     def create_tasks(self):
         """Create tasks for analysis."""
         # TODO: Popups?
@@ -158,7 +163,18 @@ class AnalysisSettings(QWidget):
                     fp.write(bytes(self.c_source(self.bv, fn), 'utf8'))
                     fp.write(b'')
                     task_id = self.dix.create_task(fp, description, vulns, remediation)
+                    if not task_id:
+                        print(f"Failed to create task for {fn.name}, aborting task creation.")
+                        self.dix.sign_out()
+                        return
                     print(f"Created task {task_id}")
         self.bv.undo()
         self.dix.sign_out()
 
+class FunctionTask(BackgroundTaskThread):
+    def __init__(self, func):
+        BackgroundTaskThread.__init__(self, "Creating tasks...", False)
+        self.func = func
+
+    def run(self):
+        self.func()
